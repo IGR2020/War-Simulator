@@ -11,7 +11,7 @@ run = True
 clock = pg.time.Clock()
 fps = 60
 
-assets = {"Soldier": load_sprite_sheets("assets\Soldier", 100, 100, resize=(200, 200))}
+assets = {"Soldier": load_sprite_sheets(r"assets\Soldier", 100, 100, resize=(200, 200))}
 
 class Soldier:
     def __init__(self, x, y, health, speed, attack, defence, defence_faulter, critical_hit_chance) -> None:
@@ -75,30 +75,43 @@ class Soldier:
         
         if self.target is None: return
 
-        if self.target[0] > self.rect.x: self.x_vel = self.speed
-        elif self.target[0] < self.rect.x: self.x_vel = -self.speed
-        if self.target[1] > self.rect.y: self.y_vel = self.speed
-        elif self.target[1] < self.rect.y: self.y_vel = -self.speed
+        if abs(self.rect.centerx - self.target[0]) < 10 and abs(self.rect.centery - self.target[1]) < 10:
+            self.target = None
+            return
+
+        if self.target[0] > self.rect.centerx: self.x_vel = self.speed
+        elif self.target[0] < self.rect.centerx: self.x_vel = -self.speed
+        if self.target[1] > self.rect.centery: self.y_vel = self.speed
+        elif self.target[1] < self.rect.centery: self.y_vel = -self.speed
+
 
 
 
 
 
 class Army:
-    def __init__(self, warriors) -> None:
+    def __init__(self, warriors, formation: tuple[int, int]) -> None:
         self.warriors = warriors
+        self.formation = []
+        for x in range(formation[0]):
+            for y in range(formation[1]):
+                self.formation.append((x*50, y*50))
 
     def display(self, window, x_offset=0, y_offset=0):
         for warrior in self.warriors:
             warrior.display(window, x_offset, y_offset)
 
-    def target(self, target):
-        for warrior in self.warriors:
+    def target(self, target, space=False):
+        for i, warrior in enumerate(self.warriors):
+            if space:
+                warrior.target = target[0] + self.formation[i][0] + randint(-10, 10), target[1] + self.formation[i][1] + randint(-10, 10)
+                continue
             warrior.target = target
 
     def halt(self):
         for warrior in self.warriors:
             warrior.target = None
+
 
     def script(self):
         for warrior in self.warriors:
@@ -109,11 +122,17 @@ bulk = []
 for i in range(6, 9):
     for j in range(1, 7):
         bulk.append(Soldier(i*50 + randint(-10, 10), j*50 + randint(-10, 10), 10, 2, 10, 10, 10, 10))
-test = Army(bulk)
+test = Army(bulk, (9-6, 7-1))
+bulk = []
+for i in range(1, 4):
+    for j in range(1, 7):
+        bulk.append(Soldier(i*50 + randint(-10, 10), j*50 + randint(-10, 10), 10, 2, 10, 10, 10, 10))
+test2 = Army(bulk, (4-1, 7-1))
 
 def display():
     window.fill((200, 130, 10))
     test.display(window)
+    test2.display(window)
     pg.display.update()
 
 
@@ -126,7 +145,8 @@ while run:
             run = False
 
         if event.type == pg.MOUSEBUTTONDOWN:
-            test.target(pg.mouse.get_pos())
+            test.target(pg.mouse.get_pos(), True)
+            
 
         if event.type == pg.KEYDOWN:
             if event.key == pg.K_SPACE:
