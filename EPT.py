@@ -2,6 +2,7 @@ import pygame
 from os import listdir
 from os.path import join, isfile, isdir
 from threading import Thread
+from PIL import Image
 
 pygame.font.init()
 
@@ -116,9 +117,27 @@ def flip(sprites):
     return [pygame.transform.flip(sprite, True, False) for sprite in sprites]
 
 
-def load_sprite_sheets(path, width, height, direction=True, resize=None):
-    images = [f for f in listdir(path) if isfile(join(path, f))]
+def crop_outer_areas(pilImage):
+    return pilImage.crop(pilImage.getbbox(alpha_only=True))
 
+
+def pilImageToSurface(pilImage):
+    return pygame.image.fromstring(
+        pilImage.tobytes(), pilImage.size, pilImage.mode
+    ).convert_alpha()
+
+
+def surfaceToPilImage(surface):
+    mode = "RGBA"
+    buffer_str = pygame.image.tostring(surface, mode)
+    image_size = surface.get_size()
+    return Image.frombytes(mode, image_size, buffer_str)
+
+
+def load_sprite_sheets(
+    path, width, height, direction=True, resize=None, autocrop=False
+):
+    images = [f for f in listdir(path) if isfile(join(path, f))]
     all_sprites = {}
 
     for image in images:
@@ -130,6 +149,10 @@ def load_sprite_sheets(path, width, height, direction=True, resize=None):
                 surface = pygame.Surface((width, height), pygame.SRCALPHA, 32)
                 rect = pygame.Rect(i * width, j * height, width, height)
                 surface.blit(sprite_sheet, (0, 0), rect)
+                if autocrop:
+                    surface = pilImageToSurface(
+                        crop_outer_areas(surfaceToPilImage(surface))
+                    )
                 sprites.append(pygame.transform.scale2x(surface))
 
         if resize is not None:
